@@ -9,4 +9,4 @@ services:
       - "24523:24523"
     volumes:
       - "./config:/etc/x-ui/"
-      - "./cert:/root/cert"
+      - "./cert:/root/"
