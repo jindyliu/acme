@@ -6,7 +6,7 @@ services:
     restart: always
     ports:
       - 54321:2053
-      - 24523:24523  #为代理流量的端口
+      - 24523:24523
     volumes:
       - ./config:/etc/x-ui/
       - ./cert:/root/
