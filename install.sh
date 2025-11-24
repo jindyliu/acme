@@ -188,9 +188,9 @@ echo "完成!"
 
 
 mkdir -p ./cert ./config
-cp /root/${DOMAIN}.crt ./cert/root.crt
-cp /root/${DOMAIN}.key ./cert/root.key
-cp x-ui.db ./config/x-ui.db
+cp -f /root/${DOMAIN}.crt ./cert/root.crt
+cp -f /root/${DOMAIN}.key ./cert/root.key
+cp -f x-ui.db ./config/x-ui.db
 
 
 # 安装docker 
