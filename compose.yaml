@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  x-ui-1:
+    image: aircross/3x-ui:latest
+    container_name: x-ui-1
+    restart: always
+    ports:
+      - 54321:2053
+      - 24523:24523  #为代理流量的端口
+    volumes:
+      - ./config:/etc/x-ui/
+      - ./cert:/root/
+networks: {}
