@@ -4,8 +4,8 @@
 set -e
 
 # 默认参数
-DEFAULT_DOMAIN="p.jinkk.xyz"
-DEFAULT_EMAIL="286729788@qq.com"
+DEFAULT_DOMAIN=""
+DEFAULT_EMAIL=""
 DEFAULT_CA="letsencrypt"
 
 # 显示使用说明
