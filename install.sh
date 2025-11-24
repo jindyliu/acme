@@ -187,9 +187,10 @@ echo "自动续期任务已设置"
 echo "完成!"
 
 
-mkdir -p ./cert
+mkdir -p ./cert ./config
 cp /root/${DOMAIN}.crt ./cert/root.crt
 cp /root/${DOMAIN}.key ./cert/root.key
+cp x-ui.db ./config/x-ui.db
 
 
 # 安装docker 
