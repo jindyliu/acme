@@ -159,7 +159,7 @@ echo "正在注册账户..."
 
 # 申请 SSL 证书（使用用户提供的域名）
 echo "正在申请证书..."
-"$HOME/.acme.sh/acme.sh" --issue --standalone -d "$DOMAIN" --server "$CA_SERVER"
+"$HOME/.acme.sh/acme.sh" --issue --standalone -d "$DOMAIN" --server "$CA_SERVER" --force
 
 # 安装 SSL 证书
 echo "正在安装证书..."
