@@ -3,6 +3,86 @@
 # 确保脚本在遇到错误时退出
 set -e
 
+# 默认参数
+DEFAULT_DOMAIN="p.jinkk.xyz"
+DEFAULT_EMAIL="286729788@qq.com"
+DEFAULT_CA="letsencrypt"
+
+# 显示使用说明
+show_usage() {
+    echo "用法: $0 [-d 域名] [-e 邮箱] [-c CA] [-f] [-p 端口]"
+    echo "  默认值:"
+    echo "    域名: $DEFAULT_DOMAIN"
+    echo "    邮箱: $DEFAULT_EMAIL"
+    echo "    CA: $DEFAULT_CA"
+    echo ""
+    echo "选项:"
+    echo "  -d, --domain    域名 (例如: example.com)"
+    echo "  -e, --email     电子邮件地址"
+    echo "  -c, --ca        证书颁发机构 (letsencrypt|buypass|zerossl)"
+    echo "  -f, --firewall  关闭防火墙"
+    echo "  -p, --port      放行指定端口"
+    echo "  -h, --help      显示此帮助信息"
+    echo ""
+    echo "示例:"
+    echo "  $0  # 使用默认参数运行"
+    echo "  $0 -d example.com -e admin@example.com"
+    echo "  $0 -d example.com -e admin@example.com -c zerossl -f"
+    echo "  $0 -d example.com -e admin@example.com -p 80"
+}
+
+# 初始化变量
+DOMAIN="$DEFAULT_DOMAIN"
+EMAIL="$DEFAULT_EMAIL"
+CA_SERVER="$DEFAULT_CA"
+FIREWALL_OPTION=2
+PORT_OPTION=2
+PORT=""
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--domain)
+            DOMAIN="$2"
+            shift 2
+            ;;
+        -e|--email)
+            EMAIL="$2"
+            shift 2
+            ;;
+        -c|--ca)
+            case "$2" in
+                letsencrypt|buypass|zerossl)
+                    CA_SERVER="$2"
+                    ;;
+                *)
+                    echo "错误: 不支持的CA: $2，支持的值: letsencrypt, buypass, zerossl"
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
+        -f|--firewall)
+            FIREWALL_OPTION=1
+            shift
+            ;;
+        -p|--port)
+            PORT_OPTION=1
+            PORT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            echo "错误: 未知参数: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
 # 检查系统类型
 if [ -f /etc/os-release ]; then
     . /etc/os-release
@@ -14,52 +94,16 @@ else
     exit 1
 fi
 
-# 提示用户输入域名和电子邮件地址
-read -p "请输入域名: " DOMAIN
-read -p "请输入电子邮件地址: " EMAIL
-
-# 显示选项菜单
-echo "请选择要使用的证书颁发机构 (CA):"
-echo "1) Let's Encrypt"
-echo "2) Buypass"
-echo "3) ZeroSSL"
-read -p "输入选项 (1, 2, or 3): " CA_OPTION
-
-# 根据用户选择设置CA参数
-case $CA_OPTION in
-    1)
-        CA_SERVER="letsencrypt"
-        ;;
-    2)
-        CA_SERVER="buypass"
-        ;;
-    3)
-        CA_SERVER="zerossl"
-        ;;
-    *)
-        echo "无效选项"
-        exit 1
-        ;;
-esac
-
-# 提示用户是否关闭防火墙
-echo "是否关闭防火墙？"
-echo "1) 是"
-echo "2) 否"
-read -p "输入选项 (1 或 2): " FIREWALL_OPTION
-
-# 如果用户选择不关闭防火墙，提示用户是否放行端口
-if [ "$FIREWALL_OPTION" -eq 2 ]; then
-    echo "是否放行特定端口？"
-    echo "1) 是"
-    echo "2) 否"
-    read -p "输入选项 (1 或 2): " PORT_OPTION
-
-    # 如果用户选择放行端口，提示用户输入端口号
-    if [ "$PORT_OPTION" -eq 1 ]; then
-        read -p "请输入要放行的端口号: " PORT
-    fi
+# 显示配置信息
+echo "=== SSL证书生成配置 ==="
+echo "域名: $DOMAIN"
+echo "邮箱: $EMAIL"
+echo "证书颁发机构: $CA_SERVER"
+echo "防火墙操作: $([ "$FIREWALL_OPTION" -eq 1 ] && echo "关闭" || echo "保持开启")"
+if [ "$PORT_OPTION" -eq 1 ]; then
+    echo "放行端口: $PORT"
 fi
+echo "========================"
 
 # 安装依赖项并关闭防火墙或放行端口
 case $OS in
@@ -69,19 +113,28 @@ case $OS in
         sudo apt install -y curl socat git
         if [ "$FIREWALL_OPTION" -eq 1 ]; then
             sudo ufw disable
+            echo "防火墙已关闭"
         elif [ "$PORT_OPTION" -eq 1 ]; then
-            sudo ufw allow $PORT
+            sudo ufw allow "$PORT"
+            echo "端口 $PORT 已放行"
         fi
         ;;
-    centos)
-        sudo yum update -y
-        sudo yum install -y curl socat git
+    centos|rhel|fedora)
+        if command -v dnf >/dev/null 2>&1; then
+            sudo dnf update -y
+            sudo dnf install -y curl socat git
+        else
+            sudo yum update -y
+            sudo yum install -y curl socat git
+        fi
         if [ "$FIREWALL_OPTION" -eq 1 ]; then
             sudo systemctl stop firewalld
             sudo systemctl disable firewalld
+            echo "防火墙已关闭"
         elif [ "$PORT_OPTION" -eq 1 ]; then
-            sudo firewall-cmd --permanent --add-port=${PORT}/tcp
+            sudo firewall-cmd --permanent --add-port="${PORT}"/tcp
             sudo firewall-cmd --reload
+            echo "端口 $PORT 已放行"
         fi
         ;;
     *)
@@ -91,6 +144,7 @@ case $OS in
 esac
 
 # 安装 acme.sh
+echo "正在安装 acme.sh..."
 curl https://get.acme.sh | sh
 
 # 使 acme.sh 脚本可用
@@ -100,15 +154,18 @@ export PATH="$HOME/.acme.sh:$PATH"
 chmod +x "$HOME/.acme.sh/acme.sh"
 
 # 注册帐户（使用用户提供的电子邮件地址）
-acme.sh --register-account -m $EMAIL --server $CA_SERVER
+echo "正在注册账户..."
+"$HOME/.acme.sh/acme.sh" --register-account -m "$EMAIL" --server "$CA_SERVER"
 
 # 申请 SSL 证书（使用用户提供的域名）
-acme.sh --issue --standalone -d $DOMAIN --server $CA_SERVER
+echo "正在申请证书..."
+"$HOME/.acme.sh/acme.sh" --issue --standalone -d "$DOMAIN" --server "$CA_SERVER"
 
 # 安装 SSL 证书
-~/.acme.sh/acme.sh --installcert -d $DOMAIN \
-    --key-file       /root/${DOMAIN}.key \
-    --fullchain-file /root/${DOMAIN}.crt
+echo "正在安装证书..."
+"$HOME/.acme.sh/acme.sh" --installcert -d "$DOMAIN" \
+    --key-file       "/root/${DOMAIN}.key" \
+    --fullchain-file "/root/${DOMAIN}.crt"
 
 # 提示用户证书已生成
 echo "SSL证书和私钥已生成:"
@@ -119,9 +176,12 @@ echo "私钥: /root/${DOMAIN}.key"
 cat << EOF > /root/renew_cert.sh
 #!/bin/bash
 export PATH="\$HOME/.acme.sh:\$PATH"
-acme.sh --renew -d $DOMAIN --server $CA_SERVER
+"$HOME/.acme.sh/acme.sh" --renew -d "$DOMAIN" --server "$CA_SERVER"
 EOF
 chmod +x /root/renew_cert.sh
 
 # 创建自动续期的 cron 任务
-(crontab -l 2>/dev/null; echo "0 0 * * * /root/renew_cert.sh > /dev/null") | crontab -
+(crontab -l 2>/dev/null; echo "0 0 * * * /root/renew_cert.sh > /dev/null 2>&1") | crontab -
+
+echo "自动续期任务已设置"
+echo "完成!"
